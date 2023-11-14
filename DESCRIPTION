@@ -1,7 +1,7 @@
 Package: easybgm
 Type: Package
 Title: Extracting and Visualizing Bayesian Graphical Models
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: c(
   person("Karoline", "Huth", , "k.huth@uva.nl", role = c("aut", "cre"), 
         comment = c(ORCID = "0000-0002-0662-1591")), 
@@ -16,13 +16,13 @@ Description: Fit and visualize the results of a Bayesian analysis of networks co
 License: GPL (>= 2)
 Encoding: UTF-8
 RoxygenNote: 7.2.3
-Imports: BDgraph, BGGM, bgms (>= 0.1.1), dplyr, ggplot2, HDInterval,
-        igraph, qgraph
+Imports: BDgraph, bgms (>= 0.1.1), dplyr, ggplot2, HDInterval, igraph,
+        qgraph
 Suggests: testthat (>= 3.0.0), vdiffr
 Config/testthat/edition: 3
 NeedsCompilation: no
-Packaged: 2023-10-06 23:54:57 UTC; karolinehuth
+Packaged: 2023-11-14 19:14:32 UTC; karolinehuth
 Author: Karoline Huth [aut, cre] (<https://orcid.org/0000-0002-0662-1591>),
   Sara Keetelaar [ctb]
 Repository: CRAN
-Date/Publication: 2023-10-09 13:30:02 UTC
+Date/Publication: 2023-11-14 23:30:02 UTC
