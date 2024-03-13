@@ -14,18 +14,19 @@
 #' @importFrom dplyr group_by summarise mutate group_modify filter
 #'
 #' @examples
-#' \donttest{
+#' 
 #'
 #' library(easybgm)
 #' library(bgms)
 #'
 #' data <- na.omit(Wenchuan)
-#' fit <- easybgm(data, type = "ordinal",
+#' subdata <- data[1:50, 1:3] #for demonstration choosing a subset to increase computation speed
+#' fit <- easybgm(subdata, type = "ordinal", save = TRUE, edge_selection = TRUE,
 #'                 iter = 1000  # for demonstration only (> 5e4 recommended)
 #'                 )
 #'
 #' plot_structure_probabilities(fit)
-#' }
+#' 
 
 plot_structure_probabilities <- function(output, as_BF = FALSE, ...) {
   if(any(any(class(output) == "easybgm"), any(class(output) == "bgms")) == FALSE){
@@ -57,18 +58,19 @@ plot_structure_probabilities <- function(output, as_BF = FALSE, ...) {
 #' @import ggplot2
 #'
 #' @examples
-#' \donttest{
+#' 
 #'
 #' library(easybgm)
 #' library(bgms)
 #'
 #' data <- na.omit(Wenchuan)
-#' fit <- easybgm(data, type = "ordinal",
+#' subdata <- data[1:50, 1:3] #for demonstration choosing a subset to increase computation speed
+#' fit <- easybgm(subdata, type = "ordinal", save = TRUE, edge_selection = TRUE,
 #'                 iter = 1000  # for demonstration only (> 5e4 recommended)
 #'                 )
 #'
 #' plot_complexity_probabilities(fit)
-#' }
+#' 
 
 plot_complexity_probabilities <- function(output, ...) {
   if(any(any(class(output) == "easybgm"), any(class(output) == "bgms")) == FALSE){
@@ -94,7 +96,6 @@ plot_complexity_probabilities <- function(output, ...) {
 #' @param evidence_thresh Bayes Factor which will be considered sufficient evidence for in-/exclusion, default is 10.
 #' @param split if TRUE, plot is split in included and excluded edges. Note that by default separate plots are shown and appear after each other in the plot window. To show the plots side-by-side specify par(mfrow = c(1, 2)).
 #' @param show specifies which edges should be shown, indicated by "all", "included", "inconclusive", "excluded".
-#' @param donotplot Runs function but does not plot (default is FALSE). Useful for saving the output (i.e. layout) without plotting.
 #' @param ... Additional arguments passed onto `qgraph`.
 #'
 #' @return Returns a plot
@@ -102,7 +103,7 @@ plot_complexity_probabilities <- function(output, ...) {
 #' @export
 #'
 #' @examples
-#' \donttest{
+#' 
 #' library(easybgm)
 #' library(bgms)
 #'
@@ -124,10 +125,10 @@ plot_complexity_probabilities <- function(output, ...) {
 #' plot_edgeevidence(fit, show = "excluded")
 #' 
 #' par(oldpar)
-#' }
+#' 
 
 
-plot_edgeevidence <- function(output, evidence_thresh = 10, split = FALSE, show = "all", donotplot = FALSE,...) {
+plot_edgeevidence <- function(output, evidence_thresh = 10, split = FALSE, show = "all",...) {
   if(any(any(class(output) == "easybgm"), any(class(output) == "bgms")) == FALSE){
     stop("Wrong input provided. The function requires as input the output of the easybgm or bgm function.")
   }
@@ -150,9 +151,8 @@ plot_edgeevidence <- function(output, evidence_thresh = 10, split = FALSE, show 
 #'
 #' @param output Output object from the easybgm function. Supports also objects from the bgm function of the `bgms` package.
 #' @param exc_prob The threshold for excluding edges. All edges with a lower inclusion probability will not be shown. The default is set to 0.5 in line with the median probability plot.
-#' @param dashed A binary parameter indicating whether edges with inconclusive evidence should be dashed. Default is FALSE.
+#' @param dashed A binary parameter indicating whether edges with inconclusive evidence should be dashed. Default is FALSE
 #' @param evidence_thresh If dashed = TRUE, users can specify the threshold for sufficient evidence for inclusion. All edges with evidence lower than `evidence_tresh` are dashed.
-#' @param donotplot Runs function but does not plot (default is FALSE). Useful for saving the output (i.e. layout) without plotting.
 #' @param ... Additional arguments passed onto `qgraph`.
 #' 
 #' @return Returns a plot
@@ -160,7 +160,7 @@ plot_edgeevidence <- function(output, evidence_thresh = 10, split = FALSE, show 
 #' @export
 #' @examples
 #'
-#' \donttest{
+#'
 #' library(easybgm)
 #' library(bgms)
 #'
@@ -176,9 +176,9 @@ plot_edgeevidence <- function(output, evidence_thresh = 10, split = FALSE, show 
 #'
 #' # Indicate which edges have insufficient evidence for inclusion through a dashed line
 #' plot_network(fit, dashed = TRUE, evidence_thresh = 10)
-#' }
+#' 
 
-plot_network <- function(output, exc_prob = .5, evidence_thresh = 10, dashed = FALSE, donotplot = FALSE,...) {
+plot_network <- function(output, exc_prob = .5, evidence_thresh = 10, dashed = FALSE, ...) {
   if(any(any(class(output) == "easybgm"), any(class(output) == "bgms")) == FALSE){
     stop("Wrong input provided. The function requires as input the output of the easybgm or bgm function.")
   }
@@ -200,7 +200,6 @@ plot_network <- function(output, exc_prob = .5, evidence_thresh = 10, dashed = F
 #' @name structure
 #'
 #' @param output Output object from the easybgm function. Supports also objects from the bgm function of the `bgms` package.
-#' @param donotplot Runs function but does not plot (default is FALSE). Useful for saving the output (i.e. layout) without plotting.
 #' @param ... Additional arguments passed onto `qgraph`
 #'
 #' @return Returns a plot
@@ -210,20 +209,20 @@ plot_network <- function(output, exc_prob = .5, evidence_thresh = 10, dashed = F
 #' @import qgraph
 #'
 #' @examples
-#' \donttest{
+#' 
 #'
 #' library(easybgm)
 #' library(bgms)
 #'
 #' data <- na.omit(Wenchuan)
-#' fit <- easybgm(data, type = "ordinal",
+#' fit <- easybgm(data, type = "continuous",
 #'                 iter = 1000  # for demonstration only (> 5e4 recommended)
 #'                )
 #'
 #' plot_structure(fit)
-#' }
+#' 
 
-plot_structure <- function(output, donotplot = FALSE,...) {
+plot_structure <- function(output, ...) {
   if(any(any(class(output) == "easybgm"), any(class(output) == "bgms")) == FALSE){
     stop("Wrong input provided. The function requires as input the output of the easybgm or bgm function.")
   }
@@ -255,18 +254,19 @@ plot_structure <- function(output, donotplot = FALSE,...) {
 #' @importFrom stats median
 #'
 #' @examples
-#' \donttest{
+#'
 #'
 #' library(easybgm)
 #' library(bgms)
 #'
 #'
 #' data <- na.omit(Wenchuan)
-#' fit <- easybgm(data, type = "ordinal",
+#' subdata <- data[1:50, 1:3] #for demonstration choosing a subset to increase computation speed
+#' fit <- easybgm(subdata, type = "ordinal",
 #'               iter = 1000,  # for demonstration only (> 5e4 recommended)
 #'               save = TRUE)
 #' plot_parameterHDI(fit)
-#' }
+#' 
 
 plot_parameterHDI <- function(output, ...) {
   if(any(any(class(output) == "easybgm"), any(class(output) == "bgms")) == FALSE){
@@ -299,18 +299,19 @@ plot_parameterHDI <- function(output, ...) {
 #' @export
 #'
 #' @examples
-#' \donttest{
+#' 
 #'
 #' library(easybgm)
 #' library(bgms)
 #'
 #' data <- na.omit(Wenchuan)
-#' fit <- easybgm(data, type = "ordinal",
+#' subdata <- data[1:50, 1:3] #for demonstration choosing a subset to increase computation speed
+#' fit <- easybgm(subdata, type = "ordinal",
 #'                 iter = 1000,  # for demonstration only (> 5e4 recommended)
 #'                 save = TRUE, centrality = TRUE)
 #'
 #' plot_centrality(fit)
-#' }
+#' 
 
 plot_centrality <- function(output, ...){
   if(any(any(class(output) == "easybgm"), any(class(output) == "bgms")) == FALSE){
@@ -323,5 +324,55 @@ plot_centrality <- function(output, ...){
   UseMethod("plot_centrality", output)
 
 }
+
+
+#' Prior sensitivity plot
+#' @title Plot sensitivity to edge inclusion prior setting
+#' @description For a given list of easybgm outputs with different prior edge inclusion probabilities, the function
+#'  plots the percentage of edges that are included, excluded, and inconclusive.
+#' @name prior_sensitivity 
+#' @param output A list of easybgm outputs with different prior edge inclusion probabilities
+#' @param ... Additional arguments passed onto ggplot2.
+#'
+#' @return Returns a plot
+#' 
+#' @export 
+#'
+#' @examples
+#' \donttest{
+#' #not run due to computation speed
+#'
+#' library(easybgm)
+#' library(bgms)
+#'
+#' #data <- na.omit(Wenchuan)
+#' #fit1 <- easybgm(data, type = "ordinal",
+#' #               iter = 1000  # for demonstration only (> 5e4 recommended),
+#' #                inclusion_probability = .1
+#' #               )
+#' #fit2 <- easybgm(data, type = "ordinal",
+#' #                  iter = 1000,
+#' #                  inclusion_probability = .5
+#' #             )
+#' #fit3 <- easybgm(data, type = "ordinal",
+#' #                iter = 1000, inclusion_probability = .9)              
+#' 
+#' #plot_prior_sensitivity(list(fit1, fit2, fit3))
+#' }
+
+plot_prior_sensitivity <- function(output, ...) {
+  if (!is.list(output))
+    stop("Wrong input provided. Please provide a list of outputs of the easybgm function.")
+  if(any(any(class(output[[1]]) == "easybgm"), any(class(output[[1]]) == "bgms")) == FALSE){
+    stop("Wrong input provided. The function requires as input the output of the easybgm or bgm function.")
+  }
+  
+  if(any(class(output)=="bgms") & (packageVersion("bgms") < "0.1.1")){
+    stop("The fit of this version of bgms is not compatible with the plot. Please install the latest package version and refit the data.")
+  }
+  
+  UseMethod("plot_prior_sensitivity", output)
+}
+
 
 

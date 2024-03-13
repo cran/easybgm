@@ -13,6 +13,7 @@ easybgm(
   save = FALSE,
   centrality = FALSE,
   progress = TRUE,
+  posterior_method = "model-averaged",
   ...
 )
 }
@@ -22,7 +23,7 @@ easybgm(
 \item{type}{What is the data type? Options: continuous, mixed, ordinal, binary}
 
 \item{package}{The R-package that should be used for fitting the network model; supports BGGM, BDgraph, and bgms. Optional argument;
-default values are specified depending on the datatype. Temporarily BGGM is not supported due to issues with the package itself.}
+default values are specified depending on the datatype.}
 
 \item{not_cont}{If data-type is mixed, a vector of length p, specifying the not-continuous
 variables (1 = not continuous, 0 = continuous).}
@@ -34,6 +35,8 @@ variables (1 = not continuous, 0 = continuous).}
 \item{centrality}{Logical. Should the centrality measures be extracted (default = FALSE)? Note, that it will significantly increase the computation time.}
 
 \item{progress}{Logical. Should a progress bar be shown (default = TRUE)?}
+
+\item{posterior_method}{Determines how the posterior samples of the edge weight parameters are obtained for models fit with BDgraph. The argument can be either MAP for the maximum-a-posteriori or model-averaged. If MAP, samples are obtained for the edge weights only for the most likely structure. If model-averaged, samples are obtained for all plausible structures weighted by their posterior probability. Default is model-averaged.}
 
 \item{...}{Additional arguments that are handed to the fitting functions of the packages, e.g., informed prior specifications.}
 }
@@ -123,13 +126,13 @@ library(bgms)
 data <- na.omit(Wenchuan)
 
 # Fitting the Wenchuan PTSD data
-\donttest{
+
 fit <- easybgm(data, type = "continuous",
                 iter = 1000 # for demonstration only (> 5e4 recommended)
                 )
 
 summary(fit)
-}
+
 \donttest{
 # To extract the posterior parameter distribution
 # and centrality measures

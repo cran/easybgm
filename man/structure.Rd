@@ -5,12 +5,10 @@
 \alias{plot_structure}
 \title{Structure plot}
 \usage{
-plot_structure(output, donotplot = FALSE, ...)
+plot_structure(output, ...)
 }
 \arguments{
 \item{output}{Output object from the easybgm function. Supports also objects from the bgm function of the \code{bgms} package.}
-
-\item{donotplot}{Runs function but does not plot (default is FALSE). Useful for saving the output (i.e. layout) without plotting.}
 
 \item{...}{Additional arguments passed onto \code{qgraph}}
 }
@@ -21,16 +19,16 @@ Returns a plot
 The plot shows the resulting graph structure, i.e. all edges with some evidence of inclusion (i.e., inclusion Bayes factor greater than 1).
 }
 \examples{
-\donttest{
+
 
 library(easybgm)
 library(bgms)
 
 data <- na.omit(Wenchuan)
-fit <- easybgm(data, type = "ordinal",
+fit <- easybgm(data, type = "continuous",
                 iter = 1000  # for demonstration only (> 5e4 recommended)
                )
 
 plot_structure(fit)
-}
+
 }

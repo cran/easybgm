@@ -10,7 +10,6 @@ plot_edgeevidence(
   evidence_thresh = 10,
   split = FALSE,
   show = "all",
-  donotplot = FALSE,
   ...
 )
 }
@@ -23,8 +22,6 @@ plot_edgeevidence(
 
 \item{show}{specifies which edges should be shown, indicated by "all", "included", "inconclusive", "excluded".}
 
-\item{donotplot}{Runs function but does not plot (default is FALSE). Useful for saving the output (i.e. layout) without plotting.}
-
 \item{...}{Additional arguments passed onto \code{qgraph}.}
 }
 \value{
@@ -34,7 +31,7 @@ Returns a plot
 The edge evidence plot colors edges according to their hypothesis testing results: blue for included, red for excluded, and gray for inconclusive. This plot can be used to visualize the hypothesis testing results whether edge presence or absence. The edge evidence plot can aid researchers in deciding which edges provide robust inferential conclusions
 }
 \examples{
-\donttest{
+
 library(easybgm)
 library(bgms)
 
@@ -56,5 +53,5 @@ plot_edgeevidence(fit, show = "inconclusive")
 plot_edgeevidence(fit, show = "excluded")
 
 par(oldpar)
-}
+
 }

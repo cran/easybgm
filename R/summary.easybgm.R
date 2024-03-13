@@ -12,21 +12,29 @@
 #' @export
 
 summary.easybgm <- function(object, evidence_thresh = 10, ...) {
-
+  
   dots_check(...)
-
+  
   # nodes
-  p <- ncol(object$parameters)
 
-  # names for each relation
-  names <- colnames(object$parameters)
-  names_bycol <- matrix(rep(names, each = p), ncol = p)
-  names_byrow <- matrix(rep(names, each = p), ncol = p, byrow = T)
-  names_comb <- matrix(paste0(names_byrow, "-", names_bycol), ncol = p)
-  mat_names <- names_comb[upper.tri(names_comb)]
+  if(is.null(object$inc_probs)){
+    p <- ncol(object$parameters)
+  } else {
+    p <- ncol(object$inc_probs)
+  }
 
+  
+  
+  
   # create data frame with parameter results
   if(object$model %in% c("dgm-binary")){
+    # names for each relation
+    names <- colnames(object$inc_probs)
+    names_bycol <- matrix(rep(names, each = p), ncol = p)
+    names_byrow <- matrix(rep(names, each = p), ncol = p, byrow = T)
+    names_comb <- matrix(paste0(names_byrow, "-", names_bycol), ncol = p)
+    mat_names <- names_comb[upper.tri(names_comb)]
+    
     inc_probs  <- round(object$inc_probs, 3)[upper.tri(object$inc_probs)]
     BF <- round(object$inc_BF, 3)[upper.tri(object$inc_BF)]
     #create the category of the edge (i.e., included, excluded, inconclusive)
@@ -34,13 +42,13 @@ summary.easybgm <- function(object, evidence_thresh = 10, ...) {
     category[(BF < evidence_thresh) & (BF > 1/evidence_thresh)] <- "inconclusive"
     category[BF > evidence_thresh] <- "included"
     category[BF < 1/evidence_thresh] <- "excluded"
-
+    
     results <-
       data.frame(
         relation = mat_names,
         inc_probs =  inc_probs,
         BF = BF,
-
+        
         category = category,
         row.names = NULL
       )
@@ -49,7 +57,35 @@ summary.easybgm <- function(object, evidence_thresh = 10, ...) {
       "Posterior Incl. Prob.",
       "Inclusion BF",
       "Category")
+  } else if(is.null(object$inc_probs)){
+    # names for each relation
+    names <- colnames(object$parameters)
+    names_bycol <- matrix(rep(names, each = p), ncol = p)
+    names_byrow <- matrix(rep(names, each = p), ncol = p, byrow = T)
+    names_comb <- matrix(paste0(names_byrow, "-", names_bycol), ncol = p)
+    mat_names <- names_comb[upper.tri(names_comb)]
+    
+    parameter_values <- round(object$parameters, 3)[upper.tri(object$parameters)]
+    
+    
+    results <-
+      data.frame(
+        relation = mat_names,
+        parameter_values = parameter_values,
+        row.names = NULL
+      )
+    colnames(results) <- c(
+      "Relation",
+      "Parameter")
   } else {
+    # names for each relation
+    names <- colnames(object$parameters)
+    names_bycol <- matrix(rep(names, each = p), ncol = p)
+    names_byrow <- matrix(rep(names, each = p), ncol = p, byrow = T)
+    names_comb <- matrix(paste0(names_byrow, "-", names_bycol), ncol = p)
+    mat_names <- names_comb[upper.tri(names_comb)]
+    
+    #create results matrix
     parameter_values <- round(object$parameters, 3)[upper.tri(object$parameters)]
     inc_probs  <- round(object$inc_probs, 3)[upper.tri(object$inc_probs)]
     BF <- round(object$inc_BF, 3)[upper.tri(object$inc_BF)]
@@ -58,8 +94,8 @@ summary.easybgm <- function(object, evidence_thresh = 10, ...) {
     category[(BF < evidence_thresh) & (BF > 1/evidence_thresh)] <- "inconclusive"
     category[BF > evidence_thresh] <- "included"
     category[BF < 1/evidence_thresh] <- "excluded"
-
-
+    
+    
     results <-
       data.frame(
         relation = mat_names,
@@ -82,21 +118,22 @@ summary.easybgm <- function(object, evidence_thresh = 10, ...) {
   out$model <- object$model
   out$n_nodes <- p
   out$n_possible_edges <- p*(p-1)/2
-  out$n_inclu_edges <- sum(BF > evidence_thresh)
-  out$n_incon_edges <- sum((BF < evidence_thresh) & (BF > 1/evidence_thresh))
-  out$n_exclu_edges <- sum(BF < 1/evidence_thresh)
-
+  if(!is.null(object$inc_probs)){
+    out$n_inclu_edges <- sum(BF > evidence_thresh)
+    out$n_incon_edges <- sum((BF < evidence_thresh) & (BF > 1/evidence_thresh))
+    out$n_exclu_edges <- sum(BF < 1/evidence_thresh)
+  }
   # structure information
-  if(all(class(object) != "package_bggm")){
+  if(!is.null(object$structure_probabilities)){
     out$possible_struc <- 2^(p*(p-1)/2)
     out$n_structures <- length(object$sample_graph)
     out$max_structure_prob <- max(object$structure_probabilities)
   }
-
+  
   # Save command calls
   out$fit_object <- object
   out$evidence_thresh <- evidence_thresh
-
+  
   # return object
   class(out) <- class(object)
   return(out)
@@ -118,10 +155,10 @@ summary.easybgm <- function(object, evidence_thresh = 10, ...) {
 #'
 
 print.easybgm <- function(x, ...){
-
+  
   dots_check(...)
-
-  if(is.null(x$n_inclu_edges)){
+  
+  if(is.null(x$n_possible_edges)){
     #NextMethod("print")
     print(summary.easybgm(x))
   } else if(any(class(x) == "package_bggm")){
@@ -133,7 +170,35 @@ print.easybgm <- function(x, ...){
         "\n EDGE SPECIFIC OVERVIEW",
         "\n")
     print(x$parameters, quote = FALSE, right = TRUE, row.names=F)
-    cat("\n Bayes factors larger than", x$evidence_thresh, "were considered sufficient evidence for the classification",
+    cat("\n Bayes factors larger than", x$evidence_thresh, "were considered sufficient evidence for the classification.",
+        "\n Bayes factors were obtained via single-model comparison.",
+        "\n ---",
+        "\n AGGREGATED EDGE OVERVIEW",
+        "\n Number of edges with sufficient evidence for inclusion:", x$n_inclu_edges,
+        "\n Number of edges with insufficient evidence:", x$n_incon_edges,
+        "\n Number of edges with sufficient evidence for exclusion:", x$n_exclu_edges,
+        "\n Number of possible edges:", x$n_possible_edges,
+        "\n")
+  } else if (ncol(x$parameters) < 3) {
+    cat("\n BAYESIAN ANALYSIS OF NETWORKS",
+        "\n Model type:", x$model,
+        "\n Number of nodes:", x$n_nodes,
+        "\n Fitting Package:", x$package,
+        "\n---",
+        "\n EDGE SPECIFIC OVERVIEW",
+        "\n")
+    print(x$parameters, quote = FALSE, right = TRUE, row.names=F)
+  } else if(is.null(x$n_structures)){
+    cat("\n BAYESIAN ANALYSIS OF NETWORKS",
+        "\n Model type:", x$model,
+        "\n Number of nodes:", x$n_nodes,
+        "\n Fitting Package:", x$package,
+        "\n---",
+        "\n EDGE SPECIFIC OVERVIEW",
+        "\n")
+    print(x$parameters, quote = FALSE, right = TRUE, row.names=F)
+    cat("\n Bayes Factors larger than", x$evidence_thresh, "were considered sufficient evidence for the classification",
+        "\n Bayes factors were obtained using Bayesian model-averaging.",
         "\n ---",
         "\n AGGREGATED EDGE OVERVIEW",
         "\n Number of edges with sufficient evidence for inclusion:", x$n_inclu_edges,
@@ -151,6 +216,7 @@ print.easybgm <- function(x, ...){
         "\n")
     print(x$parameters, quote = FALSE, right = TRUE, row.names=F)
     cat("\n Bayes Factors larger than", x$evidence_thresh, "were considered sufficient evidence for the classification",
+        "\n Bayes factors were obtained using Bayesian model-averaging.",
         "\n ---",
         "\n AGGREGATED EDGE OVERVIEW",
         "\n Number of edges with sufficient evidence for inclusion:", x$n_inclu_edges,
