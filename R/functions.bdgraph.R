@@ -1,7 +1,7 @@
 # --------------------------------------------------------------------------------------------------
 # 1. Fitting function
 # --------------------------------------------------------------------------------------------------
-
+#' @export
 bgm_fit.package_bdgraph <- function(fit, type, data, iter, save,
                                     not_cont, centrality, progress, ...){
   
@@ -55,7 +55,8 @@ bgm_fit.package_bdgraph <- function(fit, type, data, iter, save,
   if(is.null(colnames(data))){
     fit$var_names <- paste0("V", 1:ncol(data))
   } else {
-    fit$var_names <-colnames(data)
+
+    fit$var_names <- colnames(data)
   }
   class(fit) <- c("package_bdgraph", "easybgm")
   return(fit)
@@ -65,7 +66,7 @@ bgm_fit.package_bdgraph <- function(fit, type, data, iter, save,
 # --------------------------------------------------------------------------------------------------
 # 2. Extracting results function
 # --------------------------------------------------------------------------------------------------
-
+#' @export
 bgm_extract.package_bdgraph <- function(fit, type, save,
                                         not_cont, data, centrality, 
                                         posterior_method, ...){
@@ -86,7 +87,7 @@ bgm_extract.package_bdgraph <- function(fit, type, save,
   bdgraph_res <- list()
   if(model %in% "ggm"){
     #Bayesian model-averaged estimates
-    bdgraph_res$parameters <- pr2pc(fit$K_hat)
+    bdgraph_res$parameters <- qgraph::wi2net(fit$K_hat)
     diag(bdgraph_res$parameters) <- 0
     colnames(bdgraph_res$parameters) <- varnames
     bdgraph_res$inc_probs <- as.matrix(BDgraph::plinks(fit))
@@ -110,6 +111,7 @@ bgm_extract.package_bdgraph <- function(fit, type, save,
       }
           # Extract posterior samples
       data<-as.matrix(data)
+
       bdgraph_res$samples_posterior <- extract_posterior(fit, data=data, method = model, not_cont, posterior_method = posterior_method)[[1]]
       
       if(centrality == TRUE){
@@ -125,7 +127,7 @@ bgm_extract.package_bdgraph <- function(fit, type, save,
   
   if(model %in% c("gcgm")){
     #Bayesian model-averaged estimates
-    bdgraph_res$parameters <- pr2pc(fit$K_hat)
+    bdgraph_res$parameters <- qgraph::wi2net(fit$K_hat)
     diag(bdgraph_res$parameters) <- 0
     colnames(bdgraph_res$parameters) <- varnames
     bdgraph_res$inc_probs <- as.matrix(BDgraph::plinks(fit))
@@ -142,7 +144,6 @@ bgm_extract.package_bdgraph <- function(fit, type, save,
       save <- TRUE
     }
     if(save){
-      
       if(posterior_method == "MAP"){
         
         warning("Posterior samples of the BDgraph package are obtained after the fit. 
@@ -160,6 +161,7 @@ bgm_extract.package_bdgraph <- function(fit, type, save,
       data <- as.matrix(data)
       
       # Extract posterior samples
+
       bdgraph_res$samples_posterior <- extract_posterior(fit, data, method = model, not_cont = not_cont, posterior_method = posterior_method)[[1]]
       
       if(centrality){

@@ -22,9 +22,6 @@ summary.easybgm <- function(object, evidence_thresh = 10, ...) {
   } else {
     p <- ncol(object$inc_probs)
   }
-
-  
-  
   
   # create data frame with parameter results
   if(object$model %in% c("dgm-binary")){

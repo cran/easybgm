@@ -173,7 +173,113 @@ dots_check <- function(...){
 }
 
 
-# Auxiliary bgms functions
+# Sparse vs Dense Test
+# The function tests if we have overlap in the posterior distributions,
+# and with that if we need a(nother) bridge hypothesis.
+is_overlap <- function(ordered_list) {
+  
+  for (i in 1: (length(ordered_list) - 1)) {
+    #check all pairs of hypotheses
+    this_el <- ordered_list[[i]]
+    next_el <- ordered_list[[i + 1]]
+    
+    overlap <- which(this_el$tab != 0 & next_el$tab != 0)
+    
+    if (length(overlap) == 0) {
+      before_position <- i
+      if (this_el$alpha == next_el$alpha) {
+        alpha <- this_el$alpha
+        beta <- this_el$beta / 2
+      }
+      else if (this_el$beta == next_el$beta) {
+        alpha <- next_el$alpha / 2
+        beta <- this_el$beta
+      }
+      else {
+        alpha <- this_el$alpha
+        beta <- this_el$beta / 2
+      }
+      return(list(before_pos = before_position,
+                  alpha = alpha, beta = beta))
+    }
+  }
+  return(1)
+}
+
+# Given a list of the results for all needed hypotheses, the function
+# computes the log BF of sparse against dense.
+# @args ordered list of the results, with the outer two the hypotheses of 
+# interest, and in between the bridge hypotheses. k the number of potential edges.
+compute_bayes_factor <- function(ordered_list, k) {
+  bf <- 0
+  c <- 0: k
+  for (i in 1: (length(ordered_list) - 1)) {
+    el1 <- ordered_list[[i]]
+    el2 <- ordered_list[[i + 1]]
+    
+    alpha1 <- el1$alpha
+    alpha2 <- el2$alpha
+    beta1 <- el1$beta
+    beta2 <- el2$beta
+    tab1 <- el1$tab
+    tab2 <- el2$tab
+    
+    log_prior1 <- lchoose(k, c) - lbeta(alpha1, beta1) + lfactorial(alpha1 + c - 1) +
+      lfactorial(beta1 + k - c - 1) - lfactorial(alpha1 + beta1 + k - 1)
+    log_prior2 <- lchoose(k, c) - lbeta(alpha2, beta2) + lfactorial(alpha2 + c - 1) +
+      lfactorial(beta2 + k - c - 1) - lfactorial(alpha2 + beta2 + k - 1)
+    
+    prob1 <- tab1 / sum(tab1)
+    prob2 <- tab2 / sum(tab2)
+    
+    log_prob1 <- log(prob1)
+    log_prob2 <- log(prob2)
+    
+    odds1 <- log_prior1 - log_prob1
+    odds2 <- log_prob2 - log_prior2
+    
+    log_bf <- odds1 + odds2
+    log_bf[is.infinite(log_bf)] <- NA
+    log_bf <- mean(log_bf, na.rm = TRUE)
+    
+    bf <- bf + log_bf
+    
+  }
+  return(bf)
+}
+
+# Given alpha and beta parameters computes the (log)probability of the beta Bernoulli distribution
+# for the bgms package returns probability for a specific complexity
+# @args alpha, beta parameters, c the complexity for which the probability has to b computed
+# p the number of nodes
+beta_bernoulli_prob <- function(c, alpha, beta, p) {
+  
+  k <- p * (p - 1) / 2
+
+  log_nom <- lbeta(alpha + c, beta + k - c)
+  log_denom <- lbeta(alpha, beta)
+
+  log_choose <- lchoose(k, c)
+  
+
+  log_prob <- log_choose + log_nom - log_denom
+  
+  return(log_prob)
+}
+
+# Calculates the probability of an edge being present in the beta-bernoulli (BB) 
+# or the stochastic block prior on the network structure of the bgms package
+# Returns the prior inclusion probability for individual edges
+# which simply calculates the expected value of the BB distribution 
+# @args alpha, beta arguments of beta bernoulli prior, 
+
+
+calculate_edge_prior <- function(alpha, beta) {
+   alpha / (alpha + beta)
+}
+
+
+# include extractor functions to support bgms 0.1.3 version
 
 extract_arguments <- function(bgms_object) {
   if(!inherits(bgms_object, what = "bgms"))
@@ -188,69 +294,29 @@ extract_arguments <- function(bgms_object) {
   }
 }
 
-extract_edge_indicators <- function(bgms_object) {
-  arguments = extract_arguments(bgms_object)
-  if(arguments$save) {
-    edge_indicators = bgms_object$gamma
-    return(edge_indicators)
-  } else {
-    stop(paste0("To access the sampled edge indicators the bgms package needs to be run using \n",
-                "save = TRUE."))
-  }
-}
-
-extract_posterior_inclusion_probabilities <- function(bgms_object) {
-  arguments = extract_arguments(bgms_object)
-  
-  if(arguments$save) {
-    edge_means = colMeans(bgms_object$gamma)
-    no_variables = arguments$no_variables
-    
-    posterior_inclusion_probabilities = matrix(0, no_variables, no_variables)
-    posterior_inclusion_probabilities[lower.tri(posterior_inclusion_probabilities)] = edge_means
-    posterior_inclusion_probabilities = posterior_inclusion_probabilities +
-      t(posterior_inclusion_probabilities)
-    
-    data_columnnames = arguments$data_columnnames
-    colnames(posterior_inclusion_probabilities) = data_columnnames
-    rownames(posterior_inclusion_probabilities) = data_columnnames
-    
-  } else {
-    
-    posterior_inclusion_probabilities = bgms_object$gamma
-    
-  }
-  return(posterior_inclusion_probabilities)
-}
-
-
-extract_edge_priors <- function(bgms_object) {
-  arguments = extract_arguments(bgms_object)
-  
-  if(!arguments$edge_selection) {
-    stop(paste0("The bgm function did not perform edge selection, so there are no edge priors \n",
-                "specified."))
-  } else {
-    if(arguments$edge_prior == "Bernoulli") {
-      edge_prior = list(type = "Bernoulli",
-                        prior_inclusion_probability = arguments$inclusion_probability)
-    } else {
-      edge_prior = list(type = "Beta-Bernoulli",
-                        alpha = arguments$beta_bernoulli_alpha,
-                        beta = arguments$beta_bernoulli_beta)
-    }
-  }
-  return(edge_prior)
-}
-
 extract_pairwise_interactions <- function(bgms_object) {
   arguments = extract_arguments(bgms_object)
   
   return(bgms_object$interactions)
 }
 
-extract_pairwise_thresholds <- function(bgms_object) {
+extract_category_thresholds <- function(bgms_object) {
   arguments = extract_arguments(bgms_object)
   
   return(bgms_object$thresholds)
+}
+
+extract_indicators <- function(bgms_object) {
+  arguments = extract_arguments(bgms_object)
+  if(arguments$edge_selection & arguments$save) {
+    if(arguments$version < "0.1.4") {
+      edge_indicators = bgms_object$gamma
+    } else {
+      edge_indicators = bgms_object$indicator
+    }
+    return(edge_indicators)
+  } else {
+    stop(paste0("To access the sampled edge indicators the bgms package needs to be run using \n",
+                "edge_selection = TRUE and save = TRUE."))
+  }
 }
