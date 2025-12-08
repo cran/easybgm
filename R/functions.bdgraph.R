@@ -24,8 +24,9 @@ bgm_fit.package_bdgraph <- function(fit, type, data, iter, save,
   
   if(type == "continuous"){
     
+    data_centered <- as.data.frame(scale(data, center = TRUE, scale = FALSE))
     bdgraph_fit <- do.call(BDgraph::bdgraph,
-                           c(list(data = data, method ="ggm", iter = iter,
+                           c(list(data = data_centered, method ="ggm", iter = iter,
                                   save = TRUE), args))
     
     
@@ -67,7 +68,7 @@ bgm_fit.package_bdgraph <- function(fit, type, data, iter, save,
 # 2. Extracting results function
 # --------------------------------------------------------------------------------------------------
 #' @export
-bgm_extract.package_bdgraph <- function(fit, type, save,
+bgm_extract.package_bdgraph <- function(fit, type, save, iter,
                                         not_cont, data, centrality, 
                                         posterior_method, ...){
   model <- fit$model
@@ -105,22 +106,26 @@ bgm_extract.package_bdgraph <- function(fit, type, save,
     }
     
     if(save == TRUE){
-      if(posterior_method == "MAP"){
-        
-        warning("Posterior samples of the BDgraph package are obtained after the fit and might show small deviations from the model fit.")
-      }
-          # Extract posterior samples
-      data<-as.matrix(data)
-
-      bdgraph_res$samples_posterior <- extract_posterior(fit, data=data, method = model, not_cont, posterior_method = posterior_method)[[1]]
+      stop("Posterior samples of the BDgraph package cannot be obtained with the original package. If you want posterior samples from BDgraph, use this BDgraph version: https://github.com/KarolineHuth/BDgraph.")
       
-      if(centrality == TRUE){
-        # Centrality indices
-        #bdgraph_res$centrality_strength <- centrality_strength(bdgraph_res)
-        bdgraph_res$centrality <- centrality(bdgraph_res)
-      }
+      # if(posterior_method == "MAP"){
+      #   
+      #   warning("Posterior samples of the BDgraph package are obtained after the fit and might show small deviations from the model fit.")
+      # }
+      #     # Extract posterior samples
+      # data<-as.matrix(data)
+      # 
+      # bdgraph_res$samples_posterior <- extract_posterior(fit, data=data, iter = iter, method = model, not_cont, posterior_method = posterior_method)[[1]]
+      # 
+      # if(centrality == TRUE){
+      #   # Centrality indices
+      #   #bdgraph_res$centrality_strength <- centrality_strength(bdgraph_res)
+      #   bdgraph_res$centrality <- centrality(bdgraph_res)
+      # }
       
     }
+    bdgraph_res$edge.prior <- edge.prior 
+    bdgraph_res$fit_arguments  <- args
     
     output <- bdgraph_res
   }
@@ -162,7 +167,7 @@ bgm_extract.package_bdgraph <- function(fit, type, save,
       
       # Extract posterior samples
 
-      bdgraph_res$samples_posterior <- extract_posterior(fit, data, method = model, not_cont = not_cont, posterior_method = posterior_method)[[1]]
+      bdgraph_res$samples_posterior <- extract_posterior(fit, data,  iter = iter, method = model, not_cont = not_cont, posterior_method = posterior_method)[[1]]
       
       if(centrality){
         # Centrality indices
@@ -172,6 +177,9 @@ bgm_extract.package_bdgraph <- function(fit, type, save,
     }
     colnames(bdgraph_res$inc_probs) <- colnames(bdgraph_res$parameters)
     colnames(bdgraph_res$inc_BF) <- colnames(bdgraph_res$parameters)
+    
+    bdgraph_res$edge.prior <- edge.prior 
+    bdgraph_res$fit_arguments  <- args
     
     output <- bdgraph_res
   }
@@ -190,6 +198,9 @@ bgm_extract.package_bdgraph <- function(fit, type, save,
       warning("Posterior samples cannot be obtained for \"dgm-binary\". Solely the aggregated results are extracted.",
               call. = FALSE)
     }
+    bdgraph_res$edge.prior <- edge.prior 
+    bdgraph_res$fit_arguments  <- args
+    
     output <- bdgraph_res
   }
   return(output)
