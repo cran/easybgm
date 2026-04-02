@@ -27,8 +27,8 @@ library(easybgm)
 library(bgms)
 
 data <- na.omit(Wenchuan)
-fit <- easybgm(data, type = "ordinal",
-                iter = 100,  # for demonstration only (> 5e4 recommended)
+fit <- easybgm(data[1:50, 1:5], type = "ordinal",
+                iter = 100,  # for demonstration only
                 edge_selection = TRUE, save = TRUE, 
                 centrality = TRUE)
 

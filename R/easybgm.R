@@ -1,4 +1,4 @@
-#' @title Fit a Bayesian analysis of networks
+#' @title Bayesian analysis of networks
 #'
 #' @description Easy estimation of a Bayesian analysis of networks to obtain conditional (in)dependence relations between variables in a network.
 #'
@@ -10,11 +10,10 @@
 #'     default values are specified depending on the datatype.
 #' @param not_cont If data-type is mixed, a vector of length p, specifying the not-continuous
 #'     variables (1 = not continuous, 0 = continuous).
-#' @param iter number of iterations for the sampler.
+#' @param iter number of iterations for the sampler. Default is set to 1e3 but the recommended number of samples depends on the underlying package and sampler used. For data fit with BDgraph and BGGM, the default is set to 1e4.
 #' @param save Logical. Should the posterior samples be obtained (default = FALSE)?
 #' @param centrality Logical. Should the centrality measures be extracted (default = FALSE)? Note, that it will significantly increase the computation time.
 #' @param progress Logical. Should a progress bar be shown (default = TRUE)?
-#' @param posterior_method Determines how the posterior samples of the edge weight parameters are obtained for models fit with BDgraph. The argument can be either MAP for the maximum-a-posteriori or model-averaged. If MAP, samples are obtained for the edge weights only for the most likely structure. If model-averaged, samples are obtained for all plausible structures weighted by their posterior probability. Default is model-averaged.
 #' @param ... Additional arguments that are handed to the fitting functions of the packages, e.g., informed prior specifications.
 #'
 #' @return The returned object of \code{easybgm} contains several elements:
@@ -147,7 +146,7 @@
 #' # Fitting the Wenchuan PTSD data
 #'
 #' fit <- easybgm(data, type = "continuous",
-#'                 iter = 100 # for demonstration only (> 5e4 recommended)
+#'                 iter = 100 # for demonstration only
 #'                 )
 #'
 #' summary(fit)
@@ -157,14 +156,14 @@
 #' # and centrality measures
 #'
 #' fit <- easybgm(data, type = "continuous",
-#'                 iter = 100, 
+#'                 iter = 100, # for demonstration only
 #'                 centrality = TRUE, save = TRUE)
 #' }
 
 
 
-easybgm <- function(data, type, package = NULL, not_cont = NULL, iter = 1e4, save = FALSE,
-                    centrality = FALSE, progress = TRUE, posterior_method = "model-averaged",
+easybgm <- function(data, type, package = NULL, not_cont = NULL, iter = 1e3, save = FALSE,
+                    centrality = FALSE, progress = TRUE,
                     ...){
 
 
@@ -209,6 +208,13 @@ easybgm <- function(data, type, package = NULL, not_cont = NULL, iter = 1e4, sav
     if(package == "bgms") package <- "package_bgms"
     if(type == "binary") package <- "package_bgms"
   }
+  
+  # change the default number of iterations depending on the underlying package
+  if(iter == 1e3 && package == "package_bdgraph"){
+    iter <- 1e4
+  } else if (iter == 1e3 && package == "package_bggm"){
+    iter <- 1e4
+  }
 
   if(type =="continuous" & package == "package_bdgraph" & any(is.na(data))){
     warning("The data contains missing values which cannot be handled as continuous data by BDgraph.
@@ -228,6 +234,10 @@ easybgm <- function(data, type, package = NULL, not_cont = NULL, iter = 1e4, sav
 
   fit <- list()
   class(fit) <- c(package, "easybgm")
+  
+  if(!save && centrality){
+    save <- TRUE
+  }
 
   # Fit the model
   tryCatch(
@@ -242,8 +252,7 @@ easybgm <- function(data, type, package = NULL, not_cont = NULL, iter = 1e4, sav
   # Extract the results
   res <- bgm_extract(fit, type = type,
                      save = save, not_cont = not_cont,
-                     data = data, centrality = centrality,
-                     posterior_method = posterior_method,
+                     data = data, centrality = centrality, 
                      iter = iter,
                      ...)
 

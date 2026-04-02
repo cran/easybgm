@@ -5,14 +5,22 @@ plot_structure_probabilities.bgmCompare <- function(output, as_BF = FALSE, ...) 
     stop("Your version of the package bgms is not supported anymore. Please update.")
   }
   
+  if(is.null(output$structure_probabilities)){
+    stop("The model was fitted without structure selection or saving the posterior samples. Therefore, the plot cannot be obtained. Make sure the model is fitted with difference_selection and save set to TRUE.",
+         call. = FALSE)
+  }
+  
   fit_args <- bgms::extract_arguments(output)
   
-  if (packageVersion("bgms") < "0.1.6.0" & !(fit_args$save)) {
-    stop("Please run your bgmCompare function with save = T.")
+  if (packageVersion("bgms") < "0.1.6.0" ) {
+    if(!(fit_args$save)){
+      stop("Please run your bgmCompare function with save = T.")
+    }
   }
   
   res <- bgm_extract.package_bgms_compare(fit = output, save = TRUE,
                                           type = NULL, not_cont = NULL, data = NULL,
+                                          group_indicator = NULL,
                                           edge_prior = fit_args$pairwise_difference_prior,
                                           inclusion_probability  = fit_args$inclusion_probability_difference,
                                           beta_bernoulli_alpha = fit_args$pairwise_beta_bernoulli_alpha,
@@ -85,12 +93,20 @@ plot_complexity_probabilities.bgmCompare <- function(output, ...) {
   
   fit_args <- bgms::extract_arguments(output)
   
-  if (packageVersion("bgms") < "0.1.6.0" & !(fit_args$save)) {
-    stop("Please run your bgmCompare function with save = T.")
+  if(is.null(output$structure_probabilities)){
+    stop("The model was fitted without structure selection or saving the posterior samples. Therefore, the plot cannot be obtained. Make sure the model is fitted with difference_selection and save set to TRUE.",
+         call. = FALSE)
+  }
+  
+  if (packageVersion("bgms") < "0.1.6.0") {
+    if(!(fit_args$save)){
+      stop("Please run your bgmCompare function with save = T.")
+    }
   }
   
   res <- bgm_extract.package_bgms_compare(fit = output, save = TRUE,
                                           type = NULL, not_cont = NULL, data = NULL,
+                                          group_indicator = NULL,
                                           edge_prior = fit_args$pairwise_difference_prior,
                                           inclusion_probability  = fit_args$inclusion_probability_difference,
                                           beta_bernoulli_alpha = fit_args$pairwise_beta_bernoulli_alpha,
@@ -143,28 +159,45 @@ plot_complexity_probabilities.bgmCompare <- function(output, ...) {
 
 #' @export
 
-plot_edgeevidence.bgmCompare <- function(output, evidence_thresh = 10, split = FALSE, show = "all", ...) {
+plot_edgeevidence.bgmCompare <- function(output, 
+                                         evidence_thresh = NULL,
+                                         evidence_thresh_strong = 10, 
+                                         evidence_thresh_weak = 3,
+                                         edge_legend = TRUE, 
+                                         split = FALSE, show = "all", 
+                                         ...) {
   
   if(packageVersion("bgms") < "0.1.4"){
     stop("Your version of the package bgms is not supported anymore. Please update.")
+  }
+  
+  if(is.null(output$inc_probs)){
+    stop("The model was fitted without edge selection and no inclusion probabilities were obtained. Therefore, the plot cannot be obtained. Run the model with difference_selection set to TRUE.",
+         call. = FALSE)
   }
   
   warning("Note, the plot indicates the edge evidence for the pairwise difference between the groups.")
   
   fit_args <- bgms::extract_arguments(output)
   
-  if (packageVersion("bgms") < "0.1.6.0" & !(fit_args$save)) {
-    stop("Please run your bgmCompare function with save = T.")
+  if (packageVersion("bgms") < "0.1.6.0") {
+    if(!(fit_args$save)){
+      stop("Please run your bgmCompare function with save = T.")
+    }
   }
   
-  res <- bgm_extract.package_bgms_compare(fit = output, save = TRUE,
-                                          type = NULL, not_cont = NULL, data = NULL,
-                                          edge_prior = fit_args$pairwise_difference_prior,
-                                          inclusion_probability  = fit_args$inclusion_probability_difference,
-                                          beta_bernoulli_alpha = fit_args$pairwise_beta_bernoulli_alpha,
-                                          beta_bernoulli_beta = fit_args$pairwise_beta_bernoulli_beta)
+    res <- bgm_extract.package_bgms_compare(fit = output, save = TRUE,
+                                            type = NULL, not_cont = NULL, data = NULL,
+                                            group_indicator = NULL,
+                                            edge_prior = fit_args$pairwise_difference_prior,
+                                            inclusion_probability  = fit_args$inclusion_probability_difference,
+                                            beta_bernoulli_alpha = fit_args$pairwise_beta_bernoulli_alpha,
+                                            beta_bernoulli_beta = fit_args$pairwise_beta_bernoulli_beta)
+  
+
   output <- res
   
+  output$inc_probs[is.nan(output$inc_probs)] <- .9999999
   
   # Specify default arguments for function
   default_args <- list(
@@ -187,15 +220,19 @@ plot_edgeevidence.bgmCompare <- function(output, evidence_thresh = 10, split = F
   # assign a color to each edge (inclusion - blue, exclusion - red, no conclusion - grey)
   graph_color <- graph
   # 1. Most evidence for inclusion
-  graph_color[graph > evidence_thresh] <- args$edge.color[1]
-  # 2. Moderate inclusion (BF > 3 but ≤ evidence_thresh)
-  graph_color[graph > 3 & graph <= evidence_thresh] <- args$edge.color[2]
-  # 3. Inconclusive (BF between 1/3 and 3)
-  graph_color[graph >= 1/3 & graph <= 3] <- args$edge.color[3]
-  # 4. Moderate exclusion (BF < 1/3 but > 1/evidence_thresh)
-  graph_color[graph < 1/3 & graph > 1/evidence_thresh] <- args$edge.color[4]
-  # 5. Strong evidence for exclusion (BF ≤ 1/evidence_thresh)
-  graph_color[graph <= 1/evidence_thresh] <- args$edge.color[5]
+  graph_color[graph > evidence_thresh_strong] <- args$edge.color[1]
+  # 2. Moderate inclusion (BF > evidence_thresh_weak but ≤ evidence_thresh_strong)
+  graph_color[graph > evidence_thresh_weak & graph <= evidence_thresh_strong] <- args$edge.color[2]
+  # 3. Inconclusive (BF between 1/evidence_thresh_weak and evidence_thresh_weak)
+  graph_color[graph >= 1/evidence_thresh_weak & graph <= evidence_thresh_weak] <- args$edge.color[3]
+  # 4. Moderate exclusion (BF < 1/evidence_thresh_weak but > 1/evidence_thresh_strong)
+  graph_color[graph < 1/evidence_thresh_weak & graph > 1/evidence_thresh_strong] <- args$edge.color[4]
+  # 5. Strong evidence for exclusion (BF ≤ 1/evidence_thresh_strong)
+  graph_color[graph <= 1/evidence_thresh_strong] <- args$edge.color[5]
+  
+  # change to dashed lines when not conclusive evidence
+  graph_dashed <- matrix(2, nrow(graph), ncol(graph))
+  graph_dashed[(graph > evidence_thresh_strong | graph <=  1/evidence_thresh_strong)] <- 1 
   
   if (show == "all") {
     if (!split) {
@@ -204,6 +241,7 @@ plot_edgeevidence.bgmCompare <- function(output, evidence_thresh = 10, split = F
       colnames(graph) <- args$colnames
       qgraph_plot <- qgraph::qgraph(graph,
                                     edge.color = graph_color,
+                                    lty = graph_dashed,
                                     layout = args$layout,# specifies the color of the edges
                                     theme = args$theme,
                                     vsize = args$vsize,
@@ -212,8 +250,30 @@ plot_edgeevidence.bgmCompare <- function(output, evidence_thresh = 10, split = F
                                     edge.width = args$edge.width,
                                     label.cex = args$label.cex,
                                     legend.cex = args$legend.cex,
+                                    layoutScale = c(1, 0.85),
                                     ...
       )
+      if(edge_legend){
+        # Add edge legend
+        par(xpd = TRUE)   # allows drawing outside plot region
+        legend(       
+          "bottom",
+          legend = c(
+            "Included",
+            "Weakly incl.",
+            "Inconclusive",
+            "Weakly excl.",
+            "Excluded"
+          ),
+          col = args$edge.color,
+          lty = c(1,2,2,2,1),
+          lwd = 0.6*args$edge.width,
+          bty = "n",
+          horiz = T,
+          cex = args$legend.cex*1.2
+        )
+        par(xpd = FALSE)
+      }
     }
     
     if (split) {
@@ -226,6 +286,7 @@ plot_edgeevidence.bgmCompare <- function(output, evidence_thresh = 10, split = F
       colnames(graph_inc) <- colnames(output$parameters)
       qgraph_plot1 <- qgraph::qgraph(graph_inc,
                                      edge.color = graph_color,
+                                     lty = graph_dashed,
                                      layout = args$layout,# specifies the color of the edges
                                      theme = args$theme,
                                      vsize = args$vsize,
@@ -234,8 +295,30 @@ plot_edgeevidence.bgmCompare <- function(output, evidence_thresh = 10, split = F
                                      edge.width = args$edge.width,
                                      label.cex = args$label.cex,
                                      legend.cex = args$legend.cex, # specifies the color of the edges
+                                     layoutScale = c(1, 0.85),
                                      ...
       )
+      if(edge_legend){
+        # Add edge legend
+        par(xpd = TRUE)   # allows drawing outside plot region
+        legend(       
+          "bottom",
+          legend = c(
+            "Included",
+            "Weakly incl.",
+            "Inconclusive",
+            "Weakly excl.",
+            "Excluded"
+          ),
+          col = args$edge.color,
+          lty = c(1,2,2,2,1),
+          lwd = 0.6*args$edge.width,
+          bty = "n",
+          horiz = T,
+          cex = args$legend.cex*1.2
+        )
+        par(xpd = FALSE)
+      }
       # Plot excluded graph
       graph_exc[output$inc_probs >= .5] <- 0
       graph_exc[output$inc_probs < .5] <- 1
@@ -243,6 +326,7 @@ plot_edgeevidence.bgmCompare <- function(output, evidence_thresh = 10, split = F
       colnames(graph_exc) <- colnames(output$parameters)
       qgraph_plot2 <- qgraph::qgraph(graph_exc,
                                      edge.color = graph_color,
+                                     lty = graph_dashed,
                                      # specifies the color of the edges
                                      layout = args$layout,# specifies the color of the edges
                                      theme = args$theme,
@@ -252,25 +336,48 @@ plot_edgeevidence.bgmCompare <- function(output, evidence_thresh = 10, split = F
                                      edge.width = args$edge.width,
                                      label.cex = args$label.cex,
                                      legend.cex = args$legend.cex,
+                                     layoutScale = c(1, 0.85),
                                      ...
       )
+      if(edge_legend){
+        # Add edge legend
+        par(xpd = TRUE)   # allows drawing outside plot region
+        legend(       
+          "bottom",
+          legend = c(
+            "Included",
+            "Weakly incl.",
+            "Inconclusive",
+            "Weakly excl.",
+            "Excluded"
+          ),
+          col = args$edge.color,
+          lty = c(1,2,2,2,1),
+          lwd = 0.6*args$edge.width,
+          bty = "n",
+          horiz = T,
+          cex = args$legend.cex*1.2
+        )
+        par(xpd = FALSE)
+      }
     }
   }
   if(show != "all"){
     graph_show <- matrix(0, ncol = ncol(graph), nrow = nrow(graph))
     if("included" %in% show){
-      graph_show[output$inc_BF > evidence_thresh] <- 1
+      graph_show[output$inc_BF > evidence_thresh_weak] <- 1
     }
     if("excluded" %in% show){
-      graph_show[output$inc_BF < (1/evidence_thresh)] <- 1
+      graph_show[output$inc_BF < (1/evidence_thresh_weak)] <- 1
     }
     if("inconclusive" %in% show){
-      graph_show[(output$inc_BF > (1/evidence_thresh)) & (output$inc_BF < evidence_thresh)] <- 1
+      graph_show[(output$inc_BF > (1/evidence_thresh_weak)) & (output$inc_BF < evidence_thresh_weak)] <- 1
     }
     diag(graph_show) <- 1
     colnames(graph_show) <- colnames(output$parameters)
     qgraph_plot <- qgraph::qgraph(graph_show,
                                   edge.color = graph_color,
+                                  lty = graph_dashed,
                                   layout = args$layout,# specifies the color of the edges
                                   theme = args$theme,
                                   vsize = args$vsize,
@@ -278,8 +385,30 @@ plot_edgeevidence.bgmCompare <- function(output, evidence_thresh = 10, split = F
                                   legend = args$legend,
                                   label.cex = args$label.cex,
                                   legend.cex = args$legend.cex,# specifies the color of the edges
+                                  layoutScale = c(1, 0.85),
                                   ...
     )
+    if(edge_legend){
+      # Add edge legend
+      par(xpd = TRUE)   # allows drawing outside plot region
+      legend(       
+        "bottom",
+        legend = c(
+          "Included",
+          "Weakly incl.",
+          "Inconclusive",
+          "Weakly excl.",
+          "Excluded"
+        ),
+        col = args$edge.color,
+        lty = c(1,2,2,2,1),
+        lwd = 0.6*args$edge.width,
+        bty = "n",
+        horiz = T,
+        cex = args$legend.cex*1.2
+      )
+      par(xpd = FALSE)
+    }
   }
   if (split == TRUE) {
     return(invisible(list(qgraph_plot1, qgraph_plot2)))
@@ -291,7 +420,10 @@ plot_edgeevidence.bgmCompare <- function(output, evidence_thresh = 10, split = F
 # ---------------------------------------------------------------------------------------------------------------
 #' @export
 
-plot_network.bgmCompare <- function(output, exc_prob = .5, evidence_thresh = 10, dashed = TRUE, ...) {
+plot_network.bgmCompare <- function(output, exc_prob = .5, 
+                                    evidence_thresh = NULL, 
+                                    evidence_thresh_strong = 10, 
+                                    dashed = TRUE, ...) {
   
   if(packageVersion("bgms") < "0.1.4"){
     stop("Your version of the package bgms is not supported anymore. Please update.")
@@ -301,16 +433,21 @@ plot_network.bgmCompare <- function(output, exc_prob = .5, evidence_thresh = 10,
   
   fit_args <- bgms::extract_arguments(output)
   
-  if (packageVersion("bgms") < "0.1.6.0" & !(fit_args$save)) {
-    stop("Please run your bgmCompare function with save = T.")
+  if (packageVersion("bgms") < "0.1.6.0") {
+    if(!(fit_args$save)){
+      stop("Please run your bgmCompare function with save = T.")
+    }
   }
   
-  res <- bgm_extract.package_bgms_compare(fit = output, save = TRUE,
-                                          type = NULL, not_cont = NULL, data = NULL,
-                                          edge_prior = fit_args$pairwise_difference_prior,
-                                          inclusion_probability  = fit_args$inclusion_probability_difference,
-                                          beta_bernoulli_alpha = fit_args$pairwise_beta_bernoulli_alpha,
-                                          beta_bernoulli_beta = fit_args$pairwise_beta_bernoulli_beta)
+
+    res <- bgm_extract.package_bgms_compare(fit = output, save = TRUE,
+                                            type = NULL, not_cont = NULL, data = NULL,
+                                            group_indicator = NULL,
+                                            edge_prior = fit_args$pairwise_difference_prior,
+                                            inclusion_probability  = fit_args$inclusion_probability_difference,
+                                            beta_bernoulli_alpha = fit_args$pairwise_beta_bernoulli_alpha,
+                                            beta_bernoulli_beta = fit_args$pairwise_beta_bernoulli_beta)
+  
   output <- res
   
   
@@ -323,7 +460,6 @@ plot_network.bgmCompare <- function(output, exc_prob = .5, evidence_thresh = 10,
   graph <- output$parameters
   default_args <- list(
     layout = qgraph::averageLayout(as.matrix(output$parameters*output$structure)),
-    evidence_thres = 10,
     theme = "TeamFortress",
     vsize = 10,
     nodeNames = colnames(output$parameters),
@@ -340,7 +476,7 @@ plot_network.bgmCompare <- function(output, exc_prob = .5, evidence_thresh = 10,
   
   # Plot
   if(dashed){
-    graph_dashed <- ifelse(output$inc_BF < args$evidence_thres, "dashed", "solid")
+    graph_dashed <- ifelse(output$inc_BF < evidence_thresh_strong, "dashed", "solid")
     qgraph_plot <- qgraph::qgraph(graph, layout = args$layout, lty = graph_dashed,
                                   theme = args$theme, vsize = args$vsize,
                                   nodeNames = args$nodeNames,
@@ -368,21 +504,25 @@ plot_structure.bgmCompare <- function(output, ...) {
     stop("Your version of the package bgms is not supported anymore. Please update.")
   }
   
+
   warning("Note, the plot indicates the structure of the pairwise difference between the groups.")
   
   fit_args <- bgms::extract_arguments(output)
   
-  if (packageVersion("bgms") < "0.1.6.0" & !(fit_args$save)) {
-    stop("Please run your bgmCompare function with save = T.")
+  if (packageVersion("bgms") < "0.1.6.0") {
+    if(!(fit_args$save)){
+      stop("Please run your bgmCompare function with save = T.")
+    }
   }
   
+    res <- bgm_extract.package_bgms_compare(fit = output, save = TRUE,
+                                            type = NULL, not_cont = NULL, data = NULL,
+                                            group_indicator = NULL,
+                                            edge_prior = fit_args$pairwise_difference_prior,
+                                            inclusion_probability  = fit_args$inclusion_probability_difference,
+                                            beta_bernoulli_alpha = fit_args$pairwise_beta_bernoulli_alpha,
+                                            beta_bernoulli_beta = fit_args$pairwise_beta_bernoulli_beta)
   
-  res <- bgm_extract.package_bgms_compare(fit = output, save = TRUE,
-                                          type = NULL, not_cont = NULL, data = NULL,
-                                          edge_prior = fit_args$pairwise_difference_prior,
-                                          inclusion_probability  = fit_args$inclusion_probability_difference,
-                                          beta_bernoulli_alpha = fit_args$pairwise_beta_bernoulli_alpha,
-                                          beta_bernoulli_beta = fit_args$pairwise_beta_bernoulli_beta)
   output <- res
   
   # Specify default arguments for function
@@ -431,17 +571,21 @@ plot_parameterHDI.bgmCompare <- function(output, ...) {
   
   fit_args <- bgms::extract_arguments(output)
   
-  if (packageVersion("bgms") < "0.1.6.0" & !(fit_args$save)) {
-    stop("Please run your bgmCompare function with save = T.")
+  if (packageVersion("bgms") < "0.1.6.0") {
+    if(!(fit_args$save)){
+      stop("Please run your bgmCompare function with save = T.")
+    }
   }
   
+
+    res <- bgm_extract.package_bgms_compare(fit = output, save = TRUE,
+                                            type = NULL, not_cont = NULL, data = NULL,
+                                            group_indicator = NULL,
+                                            edge_prior = fit_args$pairwise_difference_prior,
+                                            inclusion_probability  = fit_args$inclusion_probability_difference,
+                                            beta_bernoulli_alpha = fit_args$pairwise_beta_bernoulli_alpha,
+                                            beta_bernoulli_beta = fit_args$pairwise_beta_bernoulli_beta)
   
-  res <- bgm_extract.package_bgms_compare(fit = output, save = TRUE,
-                                          type = NULL, not_cont = NULL, data = NULL,
-                                          edge_prior = fit_args$pairwise_difference_prior,
-                                          inclusion_probability  = fit_args$inclusion_probability_difference,
-                                          beta_bernoulli_alpha = fit_args$pairwise_beta_bernoulli_alpha,
-                                          beta_bernoulli_beta = fit_args$pairwise_beta_bernoulli_beta)
   output <- res
   
   # Specify default arguments for function
@@ -467,11 +611,7 @@ plot_parameterHDI.bgmCompare <- function(output, ...) {
   hdi_intervals <- as.data.frame(apply(output$samples_posterior, MARGIN = 2, FUN = hdi))
   posterior_medians <- apply(output$samples_posterior, MARGIN = 2, FUN = median)
   
-  names <- colnames(output$parameters)
-  names_bycol <- matrix(rep(names, each = ncol(output$parameters)), ncol = ncol(output$parameters))
-  names_byrow <- matrix(rep(names, each = ncol(output$parameters)), ncol = ncol(output$parameters), byrow = T)
-  names_comb <- matrix(paste0(names_byrow, "-", names_bycol), ncol = ncol(output$parameters))
-  index <- names_comb[upper.tri(names_comb)]
+  index <- colnames(output$samples_posterior)
   
   posterior <- cbind(data.frame(posterior_medians, row.names = NULL),
                      data.frame(t(hdi_intervals), row.names = NULL), index)
