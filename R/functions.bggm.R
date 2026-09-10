@@ -3,7 +3,8 @@
 # --------------------------------------------------------------------------------------------------
 #' @export
 bgm_fit.package_bggm <- function(fit, type, data, iter, save,
-                                 not_cont, centrality, progress, ...){
+                                 not_cont, centrality, progress, baseline_category, 
+                                 ...){
 
   prior_defaults <- list(
     prior_sd = .25
@@ -61,7 +62,8 @@ bgm_extract.package_bggm <- function(fit, type, save, iter,
 
     if(centrality){
       # bggm_res$centrality_strength <- centrality_strength(bggm_res)
-      bggm_res$centrality <- centrality(bggm_res)
+      # samples_posterior is filled from upper.tri above, so fill back the same way
+      bggm_res$centrality <- centrality(bggm_res, bycolumn = TRUE)
     }
   }
 

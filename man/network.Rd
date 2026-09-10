@@ -11,6 +11,7 @@ plot_network(
   evidence_thresh = NULL,
   evidence_thresh_strong = 10,
   dashed = FALSE,
+  partial_correlations = FALSE,
   ...
 )
 }
@@ -25,6 +26,8 @@ plot_network(
 
 \item{dashed}{A binary parameter indicating whether edges with inconclusive evidence should be dashed. Default is FALSE}
 
+\item{partial_correlations}{A binary parameter indicating whether edges should show partial correlations instead of partial associations for continuous models fit with bgms. Default is FALSE.}
+
 \item{...}{Additional arguments passed onto \code{qgraph}.}
 }
 \value{
@@ -35,13 +38,13 @@ The network plot visualizes the strength of interactions between two nodes, the 
 }
 \examples{
 
-
+\dontrun{
 library(easybgm)
 library(bgms)
 
-data <- na.omit(Wenchuan)
+data <- na.omit(Wenchuan)[1:50, 1:5]
 fit <- easybgm(data, type = "continuous",
-                iter = 100 # for demonstration only
+                iter = 100   # for demonstration only
                 )
 
 plot_network(fit)
@@ -51,5 +54,5 @@ plot_network(fit, exc_prob = 0.1)
 
 # Indicate which edges have insufficient evidence for inclusion through a dashed line
 plot_network(fit, dashed = TRUE, evidence_thresh_strong = 10)
-
+}
 }

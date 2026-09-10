@@ -3,31 +3,56 @@
 # --------------------------------------------------------------------------------------------------
 #' @export
 bgm_fit.package_bgms <- function(fit, type, data, iter, save,
-                                 not_cont, centrality, progress, ...){
+                                 not_cont, centrality, progress, 
+                                 baseline_category, 
+                                 ...){
   
-  
-  if(type == "binary") {
-    type <- "ordinal"
-  }
-  
-  if(packageVersion("bgms") > "0.1.4.2"){
+  if(packageVersion("bgms") >= "0.2.0.0"){
+    # Store original easybgm type before mapping
+    original_type <- type
+    
+    # Map easybgm type to bgms variable_type
+    if(length(type) > 1) {
+      # Vector type: per-variable specification, map binary -> ordinal, pass to bgms
+      variable_type <- type
+      variable_type[variable_type == "binary"] <- "ordinal"
+      # Store a simplified label for display
+      original_type <- if(length(unique(type)) == 1) unique(type) else "mixed"
+    } else if(type == "binary") {
+      variable_type <- "ordinal"
+    } else if(type == "mixed") {
+      variable_type <- ifelse(not_cont == 1, "ordinal", "continuous")
+    } else {
+      variable_type <- type
+    }
+    
+    bgm_args <- translate_bgm_prior_args(list(...))
+    
+    bgms_fit <- do.call(
+      bgm, c(list(x = data, iter = iter,
+                  variable_type = variable_type,
+                  display_progress = progress, 
+                  baseline_category = baseline_category), 
+             bgm_args
+      )
+    )
+  } else {
+    if(type == "binary") {
+      type <- "ordinal"
+    }
+    
+    original_type <- type
     bgms_fit <- do.call(
       bgm, c(list(x = data, iter = iter,
                   variable_type = type,
                   display_progress = progress,
+                  baseline_category = baseline_category,
                   ...))
-    )}
-  if(packageVersion("bgms") < "0.1.6"){
-    bgms_fit <- do.call(
-      bgm, c(list(x = data, iter = iter, save = T,
-                  variable_type = type,
-                  display_progress = progress,
-                  ...))
-    )}
+    )
+  }
   
   
-  
-  fit$model <- type
+  fit$model <- original_type
   fit$packagefit <- bgms_fit
   if(is.null(colnames(data))){
     fit$var_names <- paste0("V", 1:ncol(data))
@@ -44,22 +69,36 @@ bgm_fit.package_bgms <- function(fit, type, data, iter, save,
 #' @export
 bgm_extract.package_bgms <- function(fit, type, save, iter, 
                                      not_cont, data, centrality, ...){
-  if (packageVersion("bgms") < "0.1.4") {
-    stop("easybgm now requires bgms version 0.1.4 or higher.")
+  
+  if(packageVersion("bgms") >= "0.2.0.0"){
+    # --- Ensure proper bgms object and variable names ---
+    # Determine display-friendly model label
+    if(length(type) > 1) {
+      model_label <- if(length(unique(type)) == 1) unique(type) else "mixed"
+    } else {
+      model_label <- type
+    }
+  } else {
+    model_label <- type
   }
-  # --- Ensure proper bgms object and variable names ---
+  
   if (!inherits(fit, "bgms")) {
     varnames <- fit$var_names
     fit <- fit$packagefit
-    class(fit) <- "bgms"
   } else {
-    varnames <- fit$arguments$data_columnnames
+    args_tmp <- extract_arguments(fit)
+    varnames <- args_tmp$data_columnnames
     if (is.null(varnames)) {
-      varnames <- paste0("V", 1:fit$arguments$no_variables)}
+      varnames <- paste0("V", 1:args_tmp$num_variables)
+    }
   }
-  if(packageVersion("bgms") > "0.1.4.2"){
-    class(fit) <- "bgms"
-  }
+  
+  # Do not overwrite the class unconditionally: bgms (>= 0.2.0.0) fit objects
+  # are S7 (class c("bgms", "S7_object")) and rely on the S7_object class for
+  # `$`/`[[` access via S7::prop(). Stripping it to plain "bgms" breaks those
+  # accessors. The object already inherits "bgms" in every path, so only set
+  # the class in the (defensive) case where it somehow does not.
+  if(!inherits(fit, "bgms")) class(fit) <- "bgms"
   
   # --- Extract model arguments and edge priors ---
   args <- bgms::extract_arguments(fit)
@@ -73,7 +112,7 @@ bgm_extract.package_bgms <- function(fit, type, save, iter,
       args$edge_selection <- FALSE
     }
   }
-  if (args$edge_prior[1] == "Stochastic-Block" && packageVersion("bgms") > "0.1.6") {
+  if (args$edge_prior[1] == "Stochastic-Block") {
     bgms_res$sbm <- extract_sbm(fit)
   }
   # extract the prior inclusion probabilities
@@ -140,13 +179,22 @@ bgm_extract.package_bgms <- function(fit, type, save, iter,
     
     stop("Unknown edge prior type in args$edge_prior[1].")
   }
+  
   # --- Main extraction ---
   if (args$save) {
-    p <- args$no_variables
+    if(packageVersion("bgms") >= "0.2.0.0"){
+      p <- args$num_variables
+    } else {
+      p <- args$no_variables
+    }
     pars <- extract_pairwise_interactions(fit)
     bgms_res$parameters <- vector2matrix(colMeans(pars), p = p)
     bgms_res$samples_posterior <- extract_pairwise_interactions(fit)
-    bgms_res$thresholds <- extract_category_thresholds(fit)
+    if(packageVersion("bgms") >= "0.2.0.0"){
+      bgms_res$thresholds <- extract_main_effects(fit)
+    } else {
+      bgms_res$thresholds <- extract_category_thresholds(fit)
+    }
     rownames(bgms_res$parameters) <- colnames(bgms_res$parameters) <- varnames
     bgms_res$structure <- matrix(1, ncol = p, nrow = p)
     if (args$edge_selection) {
@@ -159,7 +207,7 @@ bgm_extract.package_bgms <- function(fit, type, save, iter,
           (args$beta_bernoulli_alpha / args$beta_bernoulli_beta)
       } else if (args$edge_prior[1] == "Stochastic-Block") {
         # when there is only one set of hyperparameters for the beta bernoulli
-        if (is.null(args$beta_bernoulli_alpha_between) | packageVersion("bgms") < "0.1.6") {
+        if (is.null(args$beta_bernoulli_alpha_between)) {
           bgms_res$inc_BF <- (bgms_res$inc_probs / (1 - bgms_res$inc_probs)) /
             (args$beta_bernoulli_alpha / args$beta_bernoulli_beta)
         } else {
@@ -190,10 +238,18 @@ bgm_extract.package_bgms <- function(fit, type, save, iter,
       bgms_res$sample_graph <- as.character(table_structures[, 1])
     }
   } else {
-    p <- args$no_variables
+    if(packageVersion("bgms") >= "0.2.0.0"){
+      p <- args$num_variables
+    } else {
+      p <- args$no_variables
+    }
     pars <- extract_pairwise_interactions(fit)
     bgms_res$parameters <- vector2matrix(colMeans(pars), p = p)
-    bgms_res$thresholds <- extract_category_thresholds(fit)
+    if(packageVersion("bgms") >= "0.2.0.0"){
+      bgms_res$thresholds <- extract_main_effects(fit)
+    } else {
+      bgms_res$thresholds <- extract_category_thresholds(fit)
+    }
     rownames(bgms_res$parameters) <- colnames(bgms_res$parameters) <- varnames
     bgms_res$structure <- matrix(1, ncol = ncol(bgms_res$parameters),
                                  nrow = nrow(bgms_res$parameters))
@@ -227,6 +283,8 @@ bgm_extract.package_bgms <- function(fit, type, save, iter,
       } else {
         stop("Unknown edge prior type.")
       }
+      # median probability model; inc_probs has a zero diagonal, so this does too
+      bgms_res$structure <- 1 * (bgms_res$inc_probs > 0.5)
       gammas <- extract_indicators(fit)
       structures <- apply(gammas, 1, paste0, collapse = "")
       table_structures <- as.data.frame(table(structures))
@@ -240,23 +298,85 @@ bgm_extract.package_bgms <- function(fit, type, save, iter,
   }
   # --- Optionally compute centrality ---
   if (centrality) {
-    bgms_res$centrality <- centrality(bgms_res)
+    # bgms stores pairwise interactions in lower-triangle column order
+    bgms_res$centrality <- centrality(bgms_res, bycolumn = FALSE)
   }
-      
-  # --- For newer version compute convergence ---
-  if (packageVersion("bgms") > "0.1.4.2" && args$edge_selection == T) {
-
+  
+  # --- Compute convergence diagnostics ---
+  if (args$edge_selection == TRUE) {
     # extract the Rhat
-    bgms_res$convergence_parameter <-  fit$posterior_summary_pairwise$Rhat
-    # calculate MC uncertainty
-    bgms_res$MCSE_BF <-BF_MCSE(gamma_mat = extract_indicators(fit),
-                               BF_vec = bgms_res$inc_BF[lower.tri(bgms_res$inc_BF)],
-                               ess = fit$posterior_summary_indicator$n_eff,
-                               return = "ci",
-                               smooth_bf = FALSE)
+    bgms_res$convergence_parameter <- extract_rhat(fit)$pairwise
+    # Calculate the MC uncertainty of the inclusion BF.
+    #
+    # inc_probs above is bgms's Rao-Blackwellized inclusion probability, so the
+    # Monte Carlo error has to come from that same estimator. bgms reports it in
+    # posterior_summary_indicator$mcse, already on the RB scale and in the
+    # lower-triangle order that inc_BF[lower.tri()] uses. Passing the raw
+    # indicator average to BF_MCSE() instead (as easybgm did before) combined a
+    # binomial variance belonging to the raw average with an effective sample
+    # size computed for the smoother RB chain, which inflated the interval by up
+    # to ~1.4x. BF_MCSE() is kept for the BDgraph path and for older bgms.
+    bf_vec <- bgms_res$inc_BF[lower.tri(bgms_res$inc_BF)]
+    ind_summary <- tryCatch(fit$posterior_summary_indicator,
+                            error = function(e) NULL)
+    mcse_rb <- ind_summary$mcse
+
+    if (!is.null(mcse_rb) && length(mcse_rb) == length(bf_vec)) {
+      p_rb <- bgms_res$inc_probs[lower.tri(bgms_res$inc_probs)]
+      # delta method onto the log-BF scale: se(logBF) = se(p) / (p * (1 - p))
+      se_log <- mcse_rb / (p_rb * (1 - p_rb))
+      se_log[!is.finite(se_log)] <- NA_real_
+      # bgms reports NA where the RB draws are constant to double precision,
+      # which is routine on decisive edges; those cells stay NA here.
+      z <- stats::qnorm(1 - (1 - 0.95) / 2)
+      valid <- is.finite(bf_vec) & bf_vec > 0 & !is.na(se_log)
+      bgms_res$MCSE_BF <- data.frame(
+        lower = ifelse(valid, exp(log(bf_vec) - z * se_log), NA_real_),
+        upper = ifelse(valid, exp(log(bf_vec) + z * se_log), NA_real_)
+      )
+      if (!is.null(rownames(ind_summary))) {
+        rownames(bgms_res$MCSE_BF) <- rownames(ind_summary)
+      }
+    } else {
+      # bgms < 0.2.0.0 does not report an RB Monte Carlo error
+      bgms_res$MCSE_BF <- BF_MCSE(gamma_mat = extract_indicators(fit),
+                                  BF_vec = bf_vec,
+                                  ess = extract_ess(fit)$indicator,
+                                  return = "ci",
+                                  smooth_bf = FALSE)
+    }
   }
+  
+  if(packageVersion("bgms") >= "0.2.0.0"){
+    # --- Extract interpretable parameter scales ---
+    # These return NULL when the model type doesn't support them.
+    # tryCatch guards against edge cases (e.g., mixed models with only
+    # one variable of a given type, where the sub-matrix is a scalar).
+    bgms_res$partial_correlations <- tryCatch(
+      extract_partial_correlations(fit), error = function(e) NULL)
+    bgms_res$precision_matrix <- tryCatch(
+      extract_precision(fit), error = function(e) NULL)
+    bgms_res$log_odds <- tryCatch(
+      extract_log_odds(fit), error = function(e) NULL)
+
+    # --- Blume-Capel main effects ---
+    # The linear and quadratic effects of a Blume-Capel variable are of
+    # substantive interest rather than nuisance parameters, so they get their
+    # own table. bgms names them "cat (1)" and "cat (2)" in the main-effect
+    # matrix, the same headers it uses for genuine category thresholds, so
+    # relabel what is stored in $thresholds as well.
+    bc_names <- bc_variable_names(args, varnames)
+    if(length(bc_names) > 0){
+      bgms_res$thresholds <- label_bc_thresholds(bgms_res$thresholds, bc_names)
+      bc <- tryCatch(extract_blume_capel(fit, varnames, args, save = save),
+                     error = function(e) NULL)
+      bgms_res$blume_capel_parameters <- bc$table
+      if(save) bgms_res$samples_blume_capel <- bc$samples
+    }
+  }
+  
   # --- Finalize output ---
-  bgms_res$model <- type
+  bgms_res$model <- model_label
   bgms_res$fit_arguments <- args
   output <- bgms_res
   class(output) <- c("package_bgms", "easybgm")

@@ -1,15 +1,8 @@
 #' @export
 
 plot_structure_probabilities.bgms <- function(output, as_BF = FALSE, ...) {
-  if(packageVersion("bgms") < "0.1.4"){
-    stop("Your version of the package bgms is not supported anymore. Please update.")
-  }
-  
   fit_args <- bgms::extract_arguments(output)
-  
-  if(packageVersion("bgms") > "0.1.4.2"){
-    fit_args$save <- TRUE
-  }
+  fit_args$save <- TRUE
   
   # Give error if save is false
   if(fit_args$save == FALSE){
@@ -86,14 +79,8 @@ plot_structure_probabilities.bgms <- function(output, as_BF = FALSE, ...) {
 
 plot_complexity_probabilities.bgms <- function(output, ...) {
   
-  if(packageVersion("bgms") < "0.1.4"){
-    stop("Your version of the package bgms is not supported anymore. Please update.")
-  }
-  
   fit_args <- bgms::extract_arguments(output)
-  if(packageVersion("bgms") > "0.1.4.2"){
-    fit_args$save <- TRUE
-  }
+  fit_args$save <- TRUE
   
   # Give error if save is false
   if(fit_args$save == FALSE){
@@ -172,17 +159,11 @@ plot_edgeevidence.bgms <- function(output,
                                    evidence_thresh = NULL,
                                    evidence_thresh_strong = 10, 
                                    evidence_thresh_weak = 3, 
-                                   edge_legend = TRUE, 
+                                   edge_legend = FALSE, 
                                    split = FALSE, show = "all", ...) {
   
-  if(packageVersion("bgms") < "0.1.4"){
-    stop("Your version of the package bgms is not supported anymore. Please update.")
-  }
-  
   fit_args <- bgms::extract_arguments(output)
-  if(packageVersion("bgms") > "0.1.4.2"){
-    fit_args$save <- TRUE
-  }
+  fit_args$save <- TRUE
   
   
   res <- bgm_extract.package_bgms(fit = output, save = fit_args$save, centrality = FALSE,
@@ -273,7 +254,7 @@ plot_edgeevidence.bgms <- function(output,
         )
         par(xpd = FALSE)
       }
-
+      
     }
     
     if (split) {
@@ -423,16 +404,11 @@ plot_edgeevidence.bgms <- function(output,
 plot_network.bgms <- function(output, exc_prob = .5, 
                               evidence_thresh = NULL, 
                               evidence_thresh_strong = 10, 
-                              dashed = TRUE, ...) {
-  
-  if(packageVersion("bgms") < "0.1.4"){
-    stop("Your version of the package bgms is not supported anymore. Please update.")
-  }
+                              dashed = TRUE, 
+                              partial_correlations = FALSE, ...) {
   
   fit_args <- bgms::extract_arguments(output)
-  if(packageVersion("bgms") > "0.1.4.2"){
-    fit_args$save <- TRUE
-  }
+  fit_args$save <- TRUE
   
   
   
@@ -451,8 +427,28 @@ plot_network.bgms <- function(output, exc_prob = .5,
     warning("The model was fitted without edge selection and no inclusion probabilities were obtained. Therefore, edges cannot be dashed according to their PIP.",
             call. = FALSE)
   }
+  
+  # allow users to show partial correlations instead
+  if(packageVersion("bgms") >= "0.2.0.0" & 
+     "partial_correlations" %in% names(output) & 
+     partial_correlations == FALSE) {
+    warning( "\n Note, the shown edges represent pairwise associations,",
+             "\n not partial correlations. They are therefore not on ",
+             "\n the same scale as the edge weights shown for 'BGGM' and 'BDgraph'.",
+             "\n To plot the partial correlations, change the argument",
+             "\n partial_correlations to TRUE.",
+             "\n---\n",
+             call. = FALSE)
+    graph <- output$parameters
+  } else if (packageVersion("bgms") >= "0.2.0.0" & 
+             "partial_correlations" %in% names(output) & 
+             partial_correlations == TRUE){
+    graph <- output$partial_correlations
+  } else {
+    graph <- output$partial_correlations
+  }
+  
   # Specify default arguments for function
-  graph <- output$parameters
   default_args <- list(
     layout = qgraph::averageLayout(as.matrix(output$parameters*output$structure)),
     theme = "TeamFortress",
@@ -495,14 +491,8 @@ plot_network.bgms <- function(output, exc_prob = .5,
 
 plot_structure.bgms <- function(output, ...) {
   
-  if(packageVersion("bgms") < "0.1.4"){
-    stop("Your version of the package bgms is not supported anymore. Please update.")
-  }
-  
   fit_args <- bgms::extract_arguments(output)
-  if(packageVersion("bgms") > "0.1.4.2"){
-    fit_args$save <- TRUE
-  }
+  fit_args$save <- TRUE
   
   
   res <- bgm_extract.package_bgms(fit = output, save = fit_args$save, centrality = FALSE,
@@ -547,14 +537,8 @@ plot_structure.bgms <- function(output, ...) {
 
 plot_parameterHDI.bgms <- function(output, ...) {
   
-  if(packageVersion("bgms") < "0.1.4"){
-    stop("Your version of the package bgms is not supported anymore. Please update.")
-  }
-  
   fit_args <- bgms::extract_arguments(output)
-  if(packageVersion("bgms") > "0.1.4.2"){
-    fit_args$save <- TRUE
-  }
+  fit_args$save <- TRUE
   
   if(!fit_args$save){
     stop("Samples of the posterior distribution required. When estimating the model with bgm, set \"save = TRUE\".")
@@ -622,14 +606,8 @@ plot_parameterHDI.bgms <- function(output, ...) {
 
 plot_centrality.bgms <- function(output, group_names = NULL, ...){
   
-  if(packageVersion("bgms") < "0.1.4"){
-    stop("Your version of the package bgms is not supported anymore. Please update.")
-  }
-  
   fit_args <- bgms::extract_arguments(output)
-  if(packageVersion("bgms") > "0.1.4.2"){
-    fit_args$save <- TRUE
-  }
+  fit_args$save <- TRUE
   
   if(!fit_args$save){
     stop("Samples of the posterior distribution required. When estimating the model with bgm, set \"save = TRUE\".")

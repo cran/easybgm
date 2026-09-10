@@ -136,7 +136,7 @@ plot_edgeevidence.easybgm <- function(output,
                                       evidence_thresh = NULL,
                                       evidence_thresh_strong = 10, 
                                       evidence_thresh_weak = 3, 
-                                      edge_legend = TRUE, 
+                                      edge_legend = FALSE, 
                                       split = FALSE, show = "all", 
                                       ...) {
   
@@ -403,7 +403,8 @@ plot_edgeevidence.easybgm <- function(output,
 plot_network.easybgm <- function(output, exc_prob = 0.5, 
                                  evidence_thresh = NULL, 
                                  evidence_thresh_strong = 10, 
-                                 dashed = FALSE, ...) {
+                                 dashed = FALSE, 
+                                 partial_correlations = FALSE, ...) {
   
   if(!any(class(output) == "easybgm")){
     stop("Wrong input provided. The function requires as input the output of the easybgm function.")
@@ -422,8 +423,28 @@ plot_network.easybgm <- function(output, exc_prob = 0.5,
     warning("Note, the plot indicates the strength of the pairwise difference in edge parameters between the groups.")
   }
   
+  # Allow users to plot partial correlations for continuous bgms objects instead
+  if(packageVersion("bgms") >= "0.2.0.0" & 
+     any(class(output) == "package_bgms") &
+     output$model == "continuous" & 
+     partial_correlations == FALSE) {
+    warning( "\n Note, the shown edges represent pairwise associations,",
+             "\n not partial correlations. They are therefore not on ",
+             "\n the same scale as the edge weights shown for 'BGGM' and 'BDgraph'.",
+             "\n To plot the partial correlations, change the argument",
+             "\n partial_correlations to TRUE.",
+             "\n---\n",
+             call. = FALSE)
+      graph <- output$parameters
+  } else if (packageVersion("bgms") >= "0.2.0.0" & 
+             any(class(output) == "package_bgms") &
+             output$model == "continuous" & 
+             partial_correlations == TRUE){
+    graph <- output$partial_correlations
+  } else {
+    graph <- output$parameters
+  }
   
-  graph <- output$parameters
   default_args <- list(
     layout = qgraph::averageLayout(as.matrix(output$parameters*output$structure)),
     theme = "TeamFortress",
@@ -515,11 +536,7 @@ plot_parameterHDI.easybgm <- function(output, ...) {
   }
   
   if(any(class(output) == "easybgm_compare")){
-    if (packageVersion("bgms") > "0.1.4.2") {
-      warning("Note, the plot indicates the posterior highest density interval of the overall group edges.")
-    } else {
-      warning("Note, the plot indicates the posterior highest density interval for subgroup differences.")
-    }
+    warning("Note, the plot indicates the posterior highest density interval of the overall group edges.")
   }
   
   def_args <- list(
@@ -651,22 +668,17 @@ plot_centrality.list <- function(output, group_names = NULL, ...){
   
   # Check for bgms package version 
   if(any(class(output[[1]]) == "bgms")) {
-    if(packageVersion("bgms") < "0.1.3"){
-      stop("Your version of the package bgms is not supported anymore. Please update.")
-    }
     
     res <- list()
     for(i in 1:length(output)) {
       fit_args <- bgms::extract_arguments(output[[i]])
-      
-      if(!fit_args$save){
-        stop("Samples of the posterior distribution required but not required for at least one fit. When estimating the model with bgm, set \"save = TRUE\".")
-      }
-      
-      fit_args <- bgms::extract_arguments(output[[i]])
+      # bgms >= 0.1.6.0 always stores the posterior samples and no longer reports
+      # `save` in the fit arguments, so it has to be set here.
+      fit_args$save <- TRUE
       
       res[[i]] <- bgm_extract.package_bgms(fit = output[[i]], save = fit_args$save, centrality = TRUE,
-                                           type = NULL, not_cont = NULL, data = NULL,
+                                           type = fit_args$variable_type,
+                                           not_cont = NULL, data = NULL,
                                            edge_prior = fit_args$edge_prior,
                                            inclusion_probability  = fit_args$inclusion_probability,
                                            beta_bernoulli_alpha = fit_args$beta_bernoulli_alpha,
@@ -767,17 +779,18 @@ plot_prior_sensitivity.list <- function(output,
   
   # Check for bgms package version 
   if(any(class(output[[1]]) == "bgms")) {
-    if(packageVersion("bgms") < "0.1.3"){
-      stop("Your version of the package bgms is not supported anymore. Please update.")
-    }
     
     res <- list()
     for(i in 1:length(output)) {
       fit_args <- bgms::extract_arguments(output[[i]])
+      # bgms >= 0.1.6.0 always stores the posterior samples and no longer reports
+      # `save` in the fit arguments, so it has to be set here.
+      fit_args$save <- TRUE
       
-      res[[i]] <- bgm_extract.package_bgms(fit = output[[i]], save = fit_args$save, 
+      res[[i]] <- bgm_extract.package_bgms(fit = output[[i]], save = fit_args$save,
                                            centrality = TRUE,
-                                           type = NULL, not_cont = NULL, data = NULL,
+                                           type = fit_args$variable_type,
+                                           not_cont = NULL, data = NULL,
                                            edge_prior = fit_args$edge_prior,
                                            inclusion_probability  = fit_args$inclusion_probability,
                                            beta_bernoulli_alpha = fit_args$beta_bernoulli_alpha,

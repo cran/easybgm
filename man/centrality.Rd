@@ -22,14 +22,14 @@ Visualize the strength centralities and their uncertainties. The centrality esti
 }
 \examples{
 
-\donttest{
+\dontrun{
 library(easybgm)
 library(bgms)
 
 data <- na.omit(Wenchuan)
 fit <- easybgm(data[1:50, 1:5], type = "ordinal",
-                iter = 100,  # for demonstration only
-                edge_selection = TRUE, save = TRUE, 
+                iter = 100,    # for demonstration only
+                edge_selection = TRUE, save = TRUE,
                 centrality = TRUE)
 
 plot_centrality(fit)
